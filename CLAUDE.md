@@ -42,7 +42,7 @@ Svelte Stores (reactive layer)
     ↕ (live query callbacks)
 PGLite Live Queries
     ↕ (SQL)
-PGLite Tables (_gridlite_views, _gridlite_view_groups, _gridlite_column_state)
+PGLite Tables (_gridlite_views, _gridlite_view_groups)
     ↕ (persistence)
 IndexedDB (idb://)
 ```
@@ -95,7 +95,6 @@ ViewSelector (dropdown) and ViewSidebar (persistent panel) are interchangeable �
 
 - **`_gridlite_views`** - View definitions with JSONB config columns, optional `group_id` FK
 - **`_gridlite_view_groups`** - Group definitions (name, icon, sort_order) scoped by grid_id
-- **`_gridlite_column_state`** - Per-view column state (cascading delete)
 
 ### Validation Rules
 

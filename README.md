@@ -141,7 +141,7 @@ Svelte Stores (reactive layer)
     ↕ (live query callbacks)
 PGLite Live Queries
     ↕ (SQL)
-PGLite Tables (_gridlite_views, _gridlite_view_groups, _gridlite_column_state)
+PGLite Tables (_gridlite_views, _gridlite_view_groups)
     ↕ (persistence)
 IndexedDB (idb://)
 ```

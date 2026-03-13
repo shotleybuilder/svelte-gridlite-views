@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Nested button a11y warnings in ViewSidebar group headers
 - Missing ARIA roles on drag-and-drop containers
+- **`_gridlite_column_state` schema conflict** (#3) — removed table creation from views migrations; this table is owned by `svelte-gridlite-kit` and the incompatible schemas caused `column "grid_id" does not exist` errors when both packages were used together
 
 ## [0.1.0] - 2026-03-13
 
@@ -51,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `initViewStore(db, gridId)` factory returning grid-scoped `ViewStoreBundle` with 6 reactive stores and 11 CRUD actions
 - `ViewSelector` component — dropdown for selecting, renaming, duplicating, and deleting saved views
 - `SaveViewModal` component — modal for saving new views with name, description, and config summary
-- PGLite persistence layer with `_gridlite_views` and `_gridlite_column_state` SQL tables
+- PGLite persistence layer with `_gridlite_views` SQL table
 - Live query-backed stores (`savedViews`, `recentViews`) for automatic reactivity
 - Idempotent migration runner (`runViewMigrations`)
 - Low-level SQL functions: `saveView`, `loadView`, `loadViews`, `updateView`, `deleteView`, `touchViewUsage`, `setDefaultView`, `loadDefaultView`, `nameExists`, `getViewCount`

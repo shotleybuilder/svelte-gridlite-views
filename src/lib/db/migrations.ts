@@ -1,7 +1,7 @@
 /**
  * PGLite Schema Migrations for svelte-gridlite-views
  *
- * Creates and extends the _gridlite_views and _gridlite_column_state tables.
+ * Creates and extends the _gridlite_views and _gridlite_view_groups tables.
  * Designed to be idempotent — safe to run multiple times.
  *
  * If used alongside svelte-gridlite-kit (which creates the base tables),
@@ -54,19 +54,6 @@ export async function runViewMigrations(db: PGliteWithLive): Promise<void> {
 		)
 	`);
 
-  // Column state table for granular column persistence per view
-  await db.query(`
-		CREATE TABLE IF NOT EXISTS _gridlite_column_state (
-			id TEXT PRIMARY KEY,
-			view_id TEXT NOT NULL REFERENCES _gridlite_views(id) ON DELETE CASCADE,
-			column_id TEXT NOT NULL,
-			visible BOOLEAN DEFAULT TRUE,
-			width INTEGER,
-			position INTEGER,
-			UNIQUE(view_id, column_id)
-		)
-	`);
-
   // Indexes
   await db.query(`
 		CREATE INDEX IF NOT EXISTS idx_gridlite_views_grid_id
@@ -81,11 +68,6 @@ export async function runViewMigrations(db: PGliteWithLive): Promise<void> {
   await db.query(`
 		CREATE INDEX IF NOT EXISTS idx_gridlite_views_grid_name
 			ON _gridlite_views (grid_id, name)
-	`);
-
-  await db.query(`
-		CREATE INDEX IF NOT EXISTS idx_gridlite_column_state_view_id
-			ON _gridlite_column_state (view_id)
 	`);
 
   await db.query(`
