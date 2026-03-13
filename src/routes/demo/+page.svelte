@@ -18,8 +18,8 @@
 -->
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte'
-	import { ViewSelector, SaveViewModal, initViewStore } from '$lib/index.js'
-	import type { ViewConfig, SavedView, ViewStoreBundle } from '$lib/types.js'
+	import { ViewSelector, ViewSidebar, SaveViewModal, initViewStore } from '$lib/index.js'
+	import type { ViewConfig, SavedView, ViewStoreBundle, ViewGroup } from '$lib/types.js'
 
 	// --- Sample Data ---
 	// Enforcement cases dataset with mixed column types for realistic filter/sort demos
@@ -52,6 +52,10 @@
 	let viewStore: ViewStoreBundle | null = null
 	let dbReady = false
 	let storageStats: { count: number; limit: number; percentFull: number } | null = null
+
+	// --- Sidebar State ---
+	let showSidebar = true
+	const sidebarGroups: ViewGroup[] = []  // No groups for now — views show in flat list
 
 	// --- Save Modal State ---
 	let showSaveModal = false
@@ -254,10 +258,26 @@
 				<p class="text-gray-500">Initializing PGLite database...</p>
 			</div>
 		{:else if viewStore}
+			<div class="demo-layout">
+				<!-- ViewSidebar: persistent panel on the left -->
+				<ViewSidebar
+					{viewStore}
+					groups={sidebarGroups}
+					isDocked={showSidebar}
+					on:viewSelected={handleViewSelected}
+				/>
+
 			<section>
 				<!-- Toolbar: View controls + filter presets -->
 				<div class="toolbar">
 					<div class="toolbar-row">
+						<!-- Sidebar toggle -->
+						<button type="button" on:click={() => showSidebar = !showSidebar} class="btn btn-ghost" title={showSidebar ? 'Hide sidebar' : 'Show sidebar'}>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+							</svg>
+						</button>
+
 						<!-- View Selector dropdown -->
 						<ViewSelector {viewStore} on:viewSelected={handleViewSelected} />
 
@@ -377,13 +397,28 @@
 					on:save={handleViewSaved}
 				/>
 			{/if}
+			</div>
 		{/if}
 	</main>
 </div>
 
 <style>
+	.demo-layout {
+		display: flex;
+		gap: 0;
+		min-height: 600px;
+		border: 1px solid #e5e7eb;
+		border-radius: 0.5rem;
+		overflow: hidden;
+	}
+
+	.demo-layout section {
+		flex: 1;
+		min-width: 0;
+	}
+
 	.container {
-		max-width: 1200px;
+		max-width: 1400px;
 		margin: 0 auto;
 		padding: 2rem;
 	}

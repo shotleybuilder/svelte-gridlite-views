@@ -53,6 +53,7 @@ IndexedDB (idb://)
 - **`src/lib/db/views.ts`** - Raw SQL CRUD functions for _gridlite_views table
 - **`src/lib/db/migrations.ts`** - Schema DDL + idempotent migration runner
 - **`src/lib/components/ViewSelector.svelte`** - Dropdown for selecting/renaming/deleting views
+- **`src/lib/components/ViewSidebar.svelte`** - Persistent sidebar panel for browsing/managing views (alternative to ViewSelector)
 - **`src/lib/components/SaveViewModal.svelte`** - Modal for saving new views
 - **`src/lib/types.ts`** - All TypeScript interfaces
 - **`src/lib/index.ts`** - Public API exports
@@ -81,8 +82,11 @@ IndexedDB (idb://)
 Components accept `viewStore: ViewStoreBundle` as a prop:
 ```svelte
 <ViewSelector {viewStore} on:viewSelected={handler} />
+<ViewSidebar {viewStore} groups={[]} on:viewSelected={handler} />
 <SaveViewModal {viewStore} bind:open={showModal} config={currentConfig} on:save={handler} />
 ```
+
+ViewSelector (dropdown) and ViewSidebar (persistent panel) are interchangeable — same `viewStore` prop, same `viewSelected` event. Use one or both.
 
 ### SQL Tables
 
@@ -110,7 +114,7 @@ PGLite is browser-only (WASM). `initViewStore()` throws if called on the server.
 |-------|------|----------------|
 | Quick Start | `.claude/skills/quick-start/SKILL.md` | Install, SvelteKit config, PGLite init, minimal integration, common mistakes |
 | Store API | `.claude/skills/store-api/SKILL.md` | `initViewStore()` signature, all 6 stores with types, all 11 actions with signatures |
-| Components | `.claude/skills/components/SKILL.md` | ViewSelector & SaveViewModal props/events, Update vs Save New pattern, ViewConfig type |
+| Components | `.claude/skills/components/SKILL.md` | ViewSelector, ViewSidebar & SaveViewModal props/events, Update vs Save New pattern, ViewConfig type |
 | View CRUD | `.claude/skills/view-crud/SKILL.md` | Full lifecycle (save → load → modify → update → delete), default views, storage stats |
 | Recipes | `.claude/skills/recipes/SKILL.md` | sgk integration, multiple grids, default view auto-load, migration from svelte-table-views-tanstack |
 
@@ -118,7 +122,7 @@ PGLite is browser-only (WASM). `initViewStore()` throws if called on the server.
 
 | Route | What it demonstrates |
 |-------|---------------------|
-| `src/routes/demo/+page.svelte` | Full integration: PGLite init, view store, ViewSelector, SaveViewModal, filter presets, column visibility, storage stats, default views, cleanup |
+| `src/routes/demo/+page.svelte` | Full integration: PGLite init, view store, ViewSelector, ViewSidebar, SaveViewModal, filter presets, column visibility, storage stats, default views, cleanup |
 
 ## Common Integration Patterns
 

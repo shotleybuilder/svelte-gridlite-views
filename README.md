@@ -89,7 +89,10 @@ This library includes structured skill files in `.claude/skills/` optimised for 
 | Component | Props | Events |
 |---|---|---|
 | `ViewSelector` | `viewStore: ViewStoreBundle` | `viewSelected`, `deleteView` |
+| `ViewSidebar` | `viewStore`, `groups`, `isDocked`, `width`, `showSearch`, `showPinned` | `viewSelected`, `deleteView`, `pin`, `groupToggle` |
 | `SaveViewModal` | `viewStore`, `open`, `config`, `originalQuery?` | `save` |
+
+`ViewSelector` (dropdown) and `ViewSidebar` (persistent panel) are interchangeable — same `viewStore` prop, same `viewSelected` event.
 
 ### Store Factory
 
@@ -117,7 +120,7 @@ loadDefaultView(db, gridId)    // Load default view
 
 ```typescript
 SavedView, SavedViewInput, ViewConfig, ViewStoreBundle, ViewActions,
-FilterCondition, FilterLogic, SortConfig, GroupConfig, AggregationConfig, ViewRow
+FilterCondition, FilterLogic, SortConfig, GroupConfig, AggregationConfig, ViewRow, ViewGroup
 ```
 
 ## Architecture

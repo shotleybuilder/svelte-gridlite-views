@@ -149,6 +149,95 @@ function handleSaveNew() {
 
 ---
 
+## ViewSidebar
+
+Persistent always-visible panel for browsing and managing saved views. Alternative to ViewSelector — same `viewStore` prop, same `viewSelected` event. Use one or both.
+
+### Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `viewStore` | `ViewStoreBundle` | required | Store bundle from `initViewStore()` |
+| `groups` | `ViewGroup[]` | `[]` | Optional grouping for views |
+| `storageKey` | `string` | `'view-sidebar-state'` | localStorage key for sidebar UI state |
+| `isDocked` | `boolean` | `true` | Show/hide the sidebar |
+| `width` | `number` | `260` | Sidebar width in pixels |
+| `showSearch` | `boolean` | `true` | Toggle search input |
+| `showPinned` | `boolean` | `true` | Toggle pinned views section |
+| `searchPlaceholder` | `string` | `'Search views...'` | Search input placeholder |
+
+### Events
+
+| Event | Detail | Description |
+|---|---|---|
+| `viewSelected` | `{ view: SavedView }` | Fired when user selects a view (matches ViewSelector) |
+| `deleteView` | `{ id: string }` | Fired after a view is deleted (matches ViewSelector) |
+| `pin` | `{ view: SavedView, isPinned: boolean }` | Fired when view is pinned/unpinned |
+| `groupToggle` | `{ group: ViewGroup, isCollapsed: boolean }` | Fired when group is collapsed/expanded |
+
+### Usage
+
+```svelte
+<script>
+  import { ViewSidebar } from '@shotleybuilder/svelte-gridlite-views';
+  import type { ViewGroup } from '@shotleybuilder/svelte-gridlite-views';
+
+  const groups: ViewGroup[] = [];  // flat list, or define groups
+  let showSidebar = true;
+</script>
+
+<div style="display: flex; height: 100vh;">
+  <ViewSidebar
+    {viewStore}
+    {groups}
+    isDocked={showSidebar}
+    on:viewSelected={(e) => applyConfig(e.detail.view.config)}
+  />
+  <main style="flex: 1;">
+    <!-- table content -->
+  </main>
+</div>
+```
+
+### ViewGroup Type
+
+```typescript
+interface ViewGroup {
+  id: string;
+  name: string;
+  icon?: string;
+  isCollapsed?: boolean;
+  order?: number;
+}
+```
+
+### Features
+
+- **Search**: Filter views by name and description
+- **Pinned views**: Pin frequently used views to the top (persisted to localStorage)
+- **Collapsible groups**: Organize views into named groups with counts
+- **Inline rename**: Click pencil icon, Enter to confirm, Escape to cancel
+- **Set default**: Star icon to mark a view as default
+- **Delete**: Trash icon with confirmation dialog
+- **Active view highlighting**: Selected view shown in blue
+- **Modified indicator**: Asterisk (*) when active view has unsaved changes
+- **Storage stats**: Shows X/50 views in header
+- **CSS custom properties**: Full theming support (--sidebar-bg, --sidebar-border, etc.)
+
+### CSS Custom Properties
+
+```css
+--sidebar-bg, --sidebar-border, --sidebar-font,
+--input-border, --input-bg, --focus-color, --focus-ring,
+--text-primary, --text-secondary, --text-muted,
+--hover-bg, --selected-bg, --selected-text,
+--pin-color, --badge-bg, --badge-text, --modified-color,
+--delete-color, --confirm-color,
+--scrollbar-thumb, --scrollbar-thumb-hover
+```
+
+---
+
 ## ViewConfig Type
 
 What gets saved with each view:

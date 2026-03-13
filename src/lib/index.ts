@@ -6,34 +6,36 @@
  */
 
 // Components
-export { default as SaveViewModal } from './components/SaveViewModal.svelte'
-export { default as ViewSelector } from './components/ViewSelector.svelte'
+export { default as SaveViewModal } from "./components/SaveViewModal.svelte";
+export { default as ViewSelector } from "./components/ViewSelector.svelte";
+export { default as ViewSidebar } from "./components/ViewSidebar.svelte";
 
 // Store Factory
-export { initViewStore } from './stores/view-store.js'
+export { initViewStore } from "./stores/view-store.js";
 
 // Database
-export { runViewMigrations } from './db/migrations.js'
+export { runViewMigrations } from "./db/migrations.js";
 export {
-	saveView,
-	loadView,
-	loadViews,
-	deleteView,
-	loadDefaultView,
-	setDefaultView
-} from './db/views.js'
+  saveView,
+  loadView,
+  loadViews,
+  deleteView,
+  loadDefaultView,
+  setDefaultView,
+} from "./db/views.js";
 
 // Types
 export type {
-	SavedView,
-	SavedViewInput,
-	ViewConfig,
-	ViewStoreBundle,
-	ViewActions,
-	FilterCondition,
-	FilterLogic,
-	SortConfig,
-	GroupConfig,
-	AggregationConfig,
-	ViewRow
-} from './types.js'
+  SavedView,
+  SavedViewInput,
+  ViewConfig,
+  ViewStoreBundle,
+  ViewActions,
+  FilterCondition,
+  FilterLogic,
+  SortConfig,
+  GroupConfig,
+  AggregationConfig,
+  ViewRow,
+  ViewGroup,
+} from "./types.js";
