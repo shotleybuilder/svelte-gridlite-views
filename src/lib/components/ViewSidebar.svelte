@@ -4,7 +4,8 @@
   Alternative to ViewSelector (dropdown). Same viewStore prop, same events.
   Use alongside or instead of ViewSelector depending on layout needs.
 
-  Features: search, pinned views, collapsible groups, rename, delete,
+  Features: search, pinned views, collapsible groups, group CRUD (create/rename/delete),
+  drag-and-drop views between groups, group reordering, rename, delete,
   set default, modified indicator, storage stats, CSS custom properties.
 -->
 <script lang="ts">
@@ -22,7 +23,7 @@
 	export let searchPlaceholder: string = 'Search views...'
 
 	// --- Store destructuring (same pattern as ViewSelector) ---
-	$: ({ savedViews, activeViewId, activeViewModified, actions } = viewStore)
+	$: ({ savedViews, savedGroups, activeViewId, activeViewModified, actions, groupActions } = viewStore)
 
 	// --- Internal state ---
 	let searchQuery = ''
@@ -33,11 +34,26 @@
 	let confirmDeleteId: string | null = null
 	let storageStats: { count: number; limit: number; percentFull: number } | null = null
 
+	// --- Group management state ---
+	let creatingGroup = false
+	let newGroupName = ''
+	let renamingGroupId: string | null = null
+	let renameGroupValue = ''
+
+	// --- Drag-and-drop state ---
+	let dragViewId: string | null = null
+	let dragGroupId: string | null = null
+	let dropTargetGroupId: string | null = null
+
 	const dispatch = createEventDispatcher<{
 		viewSelected: { view: SavedView }
 		deleteView: { id: string }
 		pin: { view: SavedView; isPinned: boolean }
 		groupToggle: { group: ViewGroup; isCollapsed: boolean }
+		groupCreated: { group: ViewGroup }
+		groupDeleted: { id: string }
+		groupRenamed: { id: string; name: string }
+		viewMoved: { viewId: string; groupId: string | null }
 	}>()
 
 	// --- Persisted sidebar UI state ---
@@ -82,6 +98,19 @@
 		storageStats = await actions.getStorageStats()
 	}
 
+	// --- Reactive: effective groups (store-driven or prop fallback) ---
+	$: effectiveGroups = $savedGroups.length > 0
+		? $savedGroups
+		: groups.map(g => ({
+				...g,
+				gridId: '',
+				sortOrder: g.sortOrder ?? 0,
+				createdAt: '',
+				updatedAt: ''
+			}))
+
+	$: hasStoreGroups = $savedGroups.length > 0
+
 	// --- Reactive filtering ---
 	$: filteredViews = searchQuery
 		? $savedViews.filter(
@@ -93,13 +122,10 @@
 
 	$: pinnedViews = $savedViews.filter((v) => pinnedViewIds.includes(v.id))
 
-	// Group views by groupId function (consumers assign groupId via groups prop matching)
-	// Views whose id doesn't match any group go to ungrouped
+	// Group views by groupId — uses actual view.groupId
 	$: viewsByGroup = filteredViews.reduce(
 		(acc, view) => {
-			// Check if any group's id is a prefix/match — simple: use a data attribute approach
-			// For now, all views go to ungrouped unless consumer maps them
-			const groupId = '__ungrouped__'
+			const groupId = view.groupId ?? '__ungrouped__'
 			if (!acc[groupId]) acc[groupId] = []
 			acc[groupId].push(view)
 			return acc
@@ -108,7 +134,7 @@
 	)
 
 	$: ungroupedViews = viewsByGroup['__ungrouped__'] || []
-	$: sortedGroups = [...groups].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+	$: sortedGroups = [...effectiveGroups].sort((a, b) => a.sortOrder - b.sortOrder)
 
 	// --- Event Handlers ---
 
@@ -190,6 +216,113 @@
 		if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
 		return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
 	}
+
+	// --- Group CRUD handlers ---
+
+	async function handleCreateGroup() {
+		const trimmed = newGroupName.trim()
+		if (!trimmed) return
+		try {
+			const group = await groupActions.createGroup({ name: trimmed })
+			newGroupName = ''
+			creatingGroup = false
+			dispatch('groupCreated', { group })
+		} catch (err) {
+			console.error('[ViewSidebar] Failed to create group:', err)
+		}
+	}
+
+	function startGroupRename(group: ViewGroup, event: MouseEvent) {
+		event.stopPropagation()
+		renamingGroupId = group.id
+		renameGroupValue = group.name
+	}
+
+	async function confirmGroupRename(id: string) {
+		const trimmed = renameGroupValue.trim()
+		const group = effectiveGroups.find(g => g.id === id)
+		if (trimmed && group && trimmed !== group.name) {
+			await groupActions.renameGroup(id, trimmed)
+			dispatch('groupRenamed', { id, name: trimmed })
+		}
+		renamingGroupId = null
+		renameGroupValue = ''
+	}
+
+	function cancelGroupRename() {
+		renamingGroupId = null
+		renameGroupValue = ''
+	}
+
+	async function handleDeleteGroup(group: ViewGroup, event: MouseEvent) {
+		event.stopPropagation()
+		if (confirm(`Delete group "${group.name}"? Views in this group will be moved to Ungrouped.`)) {
+			await groupActions.deleteGroup(group.id)
+			dispatch('groupDeleted', { id: group.id })
+		}
+	}
+
+	// --- Drag-and-drop handlers ---
+
+	function handleViewDragStart(event: DragEvent, view: SavedView) {
+		dragViewId = view.id
+		dragGroupId = null
+		event.dataTransfer?.setData('text/plain', view.id)
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'move'
+		}
+	}
+
+	function handleGroupDragStart(event: DragEvent, group: ViewGroup) {
+		dragGroupId = group.id
+		dragViewId = null
+		event.dataTransfer?.setData('text/plain', group.id)
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'move'
+		}
+	}
+
+	function handleGroupDragOver(event: DragEvent, targetId: string) {
+		if (dragViewId || dragGroupId) {
+			event.preventDefault()
+			if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+			dropTargetGroupId = targetId
+		}
+	}
+
+	function handleGroupDragLeave(event: DragEvent) {
+		const relatedTarget = event.relatedTarget as HTMLElement | null
+		if (!relatedTarget || !(event.currentTarget as HTMLElement).contains(relatedTarget)) {
+			dropTargetGroupId = null
+		}
+	}
+
+	async function handleGroupDrop(event: DragEvent, targetGroupId: string | null) {
+		event.preventDefault()
+		dropTargetGroupId = null
+
+		if (dragViewId) {
+			await groupActions.moveViewToGroup(dragViewId, targetGroupId)
+			dispatch('viewMoved', { viewId: dragViewId, groupId: targetGroupId })
+			dragViewId = null
+		} else if (dragGroupId && targetGroupId && dragGroupId !== targetGroupId) {
+			const currentOrder = sortedGroups.map(g => g.id)
+			const fromIndex = currentOrder.indexOf(dragGroupId)
+			const toIndex = currentOrder.indexOf(targetGroupId)
+			if (fromIndex >= 0 && toIndex >= 0) {
+				currentOrder.splice(fromIndex, 1)
+				currentOrder.splice(toIndex, 0, dragGroupId)
+				await groupActions.reorderGroups(currentOrder)
+			}
+			dragGroupId = null
+		}
+	}
+
+	function handleDragEnd() {
+		dragViewId = null
+		dragGroupId = null
+		dropTargetGroupId = null
+	}
 </script>
 
 {#if isDocked}
@@ -197,9 +330,20 @@
 		<!-- Header -->
 		<div class="sidebar-header">
 			<span class="sidebar-title">Views</span>
-			{#if storageStats}
-				<span class="storage-stats">{storageStats.count}/{storageStats.limit}</span>
-			{/if}
+			<div class="header-actions">
+				{#if storageStats}
+					<span class="storage-stats">{storageStats.count}/{storageStats.limit}</span>
+				{/if}
+				<button
+					class="new-group-btn"
+					on:click={() => { creatingGroup = true }}
+					title="New group"
+				>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="icon-xs">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+					</svg>
+				</button>
+			</div>
 		</div>
 
 		<!-- Search -->
@@ -222,6 +366,34 @@
 		{/if}
 
 		<div class="sidebar-content">
+			<!-- New Group inline creation -->
+			{#if creatingGroup}
+				<div class="new-group-row">
+					<input
+						type="text"
+						bind:value={newGroupName}
+						placeholder="Group name..."
+						maxlength="100"
+						on:keydown={(e) => {
+							if (e.key === 'Enter') handleCreateGroup()
+							if (e.key === 'Escape') { creatingGroup = false; newGroupName = '' }
+						}}
+						class="rename-input"
+						autofocus
+					/>
+					<button class="action-btn confirm" on:click={handleCreateGroup} title="Create">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="icon-xs">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+						</svg>
+					</button>
+					<button class="action-btn cancel" on:click={() => { creatingGroup = false; newGroupName = '' }} title="Cancel">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="icon-xs">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</button>
+				</div>
+			{/if}
+
 			<!-- Pinned Views -->
 			{#if showPinned && pinnedViews.length > 0 && !searchQuery}
 				<div class="pinned-section">
@@ -262,21 +434,84 @@
 				{@const groupViews = viewsByGroup[group.id] || []}
 				{@const isCollapsed = collapsedGroupIds.includes(group.id)}
 				{#if groupViews.length > 0 || !searchQuery}
-					<div class="view-group">
-						<button class="group-header" on:click={() => handleToggleGroup(group)}>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="icon-xs collapse-icon" class:collapsed={isCollapsed}>
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-							</svg>
-							{#if group.icon}
-								<span class="group-icon">{group.icon}</span>
-							{/if}
-							<span class="group-name">{group.name}</span>
-							<span class="group-count">{groupViews.length}</span>
-						</button>
+					<div
+						class="view-group"
+						role="group"
+						aria-label={group.name}
+						class:drop-target={dropTargetGroupId === group.id}
+						on:dragover={(e) => handleGroupDragOver(e, group.id)}
+						on:dragleave={handleGroupDragLeave}
+						on:drop={(e) => handleGroupDrop(e, group.id)}
+					>
+						{#if renamingGroupId === group.id}
+							<div class="rename-row group-rename-row">
+								<input
+									type="text"
+									bind:value={renameGroupValue}
+									on:keydown={(e) => {
+										if (e.key === 'Enter') confirmGroupRename(group.id)
+										if (e.key === 'Escape') cancelGroupRename()
+									}}
+									class="rename-input"
+									maxlength="100"
+									autofocus
+								/>
+								<button class="action-btn confirm" on:click={() => confirmGroupRename(group.id)} title="Save">
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="icon-xs">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+									</svg>
+								</button>
+								<button class="action-btn cancel" on:click={cancelGroupRename} title="Cancel">
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="icon-xs">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+									</svg>
+								</button>
+							</div>
+						{:else}
+							<div
+								class="group-header"
+								role="button"
+								tabindex="0"
+								draggable={hasStoreGroups}
+								on:dragstart={(e) => handleGroupDragStart(e, group)}
+								on:dragend={handleDragEnd}
+								on:click={() => handleToggleGroup(group)}
+								on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggleGroup(group) }}
+							>
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="icon-xs collapse-icon" class:collapsed={isCollapsed}>
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+								</svg>
+								{#if group.icon}
+									<span class="group-icon">{group.icon}</span>
+								{/if}
+								<span class="group-name">{group.name}</span>
+								<span class="group-count">{groupViews.length}</span>
+								{#if hasStoreGroups}
+									<div class="group-actions">
+										<button class="action-btn" on:click={(e) => startGroupRename(group, e)} title="Rename group">
+											<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="icon-xs">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+											</svg>
+										</button>
+										<button class="action-btn delete" on:click={(e) => handleDeleteGroup(group, e)} title="Delete group">
+											<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="icon-xs">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+											</svg>
+										</button>
+									</div>
+								{/if}
+							</div>
+						{/if}
 						{#if !isCollapsed}
 							<ul class="view-list">
 								{#each groupViews as view (view.id)}
-									<li class="view-item" class:selected={view.id === $activeViewId}>
+									<li
+										class="view-item"
+										class:selected={view.id === $activeViewId}
+										draggable="true"
+										on:dragstart={(e) => handleViewDragStart(e, view)}
+										on:dragend={handleDragEnd}
+									>
 										{#if renamingId === view.id}
 											<div class="rename-row">
 												<input
@@ -351,18 +586,32 @@
 				{/if}
 			{/each}
 
-			<!-- Ungrouped Views (when groups are defined, shows remainder; when no groups, shows all) -->
+			<!-- Ungrouped Views -->
 			{#if ungroupedViews.length > 0}
-				<div class="view-group">
-					{#if groups.length > 0}
+				<div
+					class="view-group"
+					role="group"
+					aria-label="Ungrouped views"
+					class:drop-target={dropTargetGroupId === '__ungrouped__'}
+					on:dragover={(e) => handleGroupDragOver(e, '__ungrouped__')}
+					on:dragleave={handleGroupDragLeave}
+					on:drop={(e) => handleGroupDrop(e, null)}
+				>
+					{#if effectiveGroups.length > 0}
 						<div class="group-header static">
-							<span class="group-name">{searchQuery ? 'Search Results' : 'All Views'}</span>
+							<span class="group-name">{searchQuery ? 'Search Results' : 'Ungrouped'}</span>
 							<span class="group-count">{ungroupedViews.length}</span>
 						</div>
 					{/if}
 					<ul class="view-list">
 						{#each ungroupedViews as view (view.id)}
-							<li class="view-item" class:selected={view.id === $activeViewId}>
+							<li
+								class="view-item"
+								class:selected={view.id === $activeViewId}
+								draggable="true"
+								on:dragstart={(e) => handleViewDragStart(e, view)}
+								on:dragend={handleDragEnd}
+							>
 								{#if renamingId === view.id}
 									<div class="rename-row">
 										<input
@@ -466,6 +715,12 @@
 		border-bottom: 1px solid var(--sidebar-border, #e1e4e8);
 	}
 
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+
 	.sidebar-title {
 		font-size: 12px;
 		font-weight: 700;
@@ -477,6 +732,30 @@
 	.storage-stats {
 		font-size: 11px;
 		color: var(--text-muted, #9ca3af);
+	}
+
+	.new-group-btn {
+		padding: 3px;
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: var(--text-muted, #9ca3af);
+		border-radius: 3px;
+		display: flex;
+		align-items: center;
+	}
+
+	.new-group-btn:hover {
+		background: var(--hover-bg, rgba(0, 0, 0, 0.08));
+		color: var(--text-secondary, #4b5563);
+	}
+
+	.new-group-row {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		padding: 6px 14px;
+		border-bottom: 1px solid var(--sidebar-border, #e1e4e8);
 	}
 
 	.sidebar-search {
@@ -558,6 +837,15 @@
 	/* Groups */
 	.view-group {
 		margin-bottom: 2px;
+		border: 1px solid transparent;
+		border-radius: 4px;
+		transition: border-color 0.15s ease, background-color 0.15s ease;
+	}
+
+	.view-group.drop-target {
+		background: var(--drop-target-bg, rgba(59, 130, 246, 0.06));
+		border-color: var(--drop-target-border, rgba(59, 130, 246, 0.35));
+		border-style: dashed;
 	}
 
 	.group-header {
@@ -579,6 +867,18 @@
 		background: var(--hover-bg, rgba(0, 0, 0, 0.04));
 	}
 
+	.group-header[draggable="true"] {
+		cursor: grab;
+	}
+
+	.group-header[draggable="true"]:active {
+		cursor: grabbing;
+	}
+
+	.group-header[role="button"] {
+		user-select: none;
+	}
+
 	.group-header.static {
 		cursor: default;
 	}
@@ -589,6 +889,7 @@
 
 	.collapse-icon {
 		transition: transform 0.15s ease;
+		flex-shrink: 0;
 	}
 
 	.collapse-icon:not(.collapsed) {
@@ -600,6 +901,25 @@
 		color: var(--text-muted, #9ca3af);
 		font-weight: normal;
 		font-size: 11px;
+	}
+
+	.group-actions {
+		display: none;
+		align-items: center;
+		gap: 1px;
+		margin-left: auto;
+	}
+
+	.group-header:hover .group-actions {
+		display: flex;
+	}
+
+	.group-header:hover .group-count {
+		display: none;
+	}
+
+	.group-rename-row {
+		padding: 4px 14px;
 	}
 
 	/* View list */
@@ -622,6 +942,14 @@
 
 	.view-item.selected {
 		background: var(--selected-bg, rgba(59, 130, 246, 0.1));
+	}
+
+	.view-item[draggable="true"] {
+		cursor: grab;
+	}
+
+	.view-item[draggable="true"]:active {
+		cursor: grabbing;
 	}
 
 	.view-button {

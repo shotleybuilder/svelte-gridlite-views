@@ -19,7 +19,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte'
 	import { ViewSelector, ViewSidebar, SaveViewModal, initViewStore } from '$lib/index.js'
-	import type { ViewConfig, SavedView, ViewStoreBundle, ViewGroup } from '$lib/types.js'
+	import type { ViewConfig, SavedView, ViewStoreBundle } from '$lib/types.js'
 
 	// --- Sample Data ---
 	// Enforcement cases dataset with mixed column types for realistic filter/sort demos
@@ -55,7 +55,6 @@
 
 	// --- Sidebar State ---
 	let showSidebar = true
-	const sidebarGroups: ViewGroup[] = []  // No groups for now — views show in flat list
 
 	// --- Save Modal State ---
 	let showSaveModal = false
@@ -72,6 +71,14 @@
 		viewStore = initViewStore(db as any, 'demo-grid')
 		await viewStore.actions.waitForReady()
 		dbReady = true
+
+		// Seed sample groups if none exist
+		const hasGroups = await viewStore.groupActions.groupNameExists('Safety Cases')
+		if (!hasGroups) {
+			await viewStore.groupActions.createGroup({ name: 'Safety Cases' })
+			await viewStore.groupActions.createGroup({ name: 'Notices' })
+			await viewStore.groupActions.createGroup({ name: 'Archived' })
+		}
 
 		// Auto-load default view if one exists
 		const defaultView = await viewStore.actions.loadDefaultView()
@@ -262,7 +269,6 @@
 				<!-- ViewSidebar: persistent panel on the left -->
 				<ViewSidebar
 					{viewStore}
-					groups={sidebarGroups}
 					isDocked={showSidebar}
 					on:viewSelected={handleViewSelected}
 				/>

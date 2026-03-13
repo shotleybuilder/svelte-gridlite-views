@@ -52,6 +52,7 @@ export interface ViewConfig {
 export interface SavedView {
   id: string;
   gridId: string;
+  groupId?: string; // null/undefined = ungrouped
   name: string;
   description?: string;
   config: ViewConfig;
@@ -71,6 +72,7 @@ export type SavedViewInput = Pick<SavedView, "name" | "config"> &
 export interface ViewRow {
   id: string;
   grid_id: string;
+  group_id: string | null;
   name: string;
   description: string | null;
   filters: string; // JSONB as string
@@ -89,14 +91,40 @@ export interface ViewRow {
   updated_at: string;
 }
 
-// ─── View Group (for sidebar) ─────────────────────────────────────
+// ─── View Group ───────────────────────────────────────────────────
+
+export interface ViewGroupRow {
+  id: string;
+  grid_id: string;
+  name: string;
+  icon: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface ViewGroup {
   id: string;
+  gridId: string;
   name: string;
   icon?: string;
-  isCollapsed?: boolean;
-  order?: number;
+  isCollapsed?: boolean; // UI-only, stored in localStorage
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ViewGroupInput = Pick<ViewGroup, "name"> &
+  Partial<Pick<ViewGroup, "icon">>;
+
+export interface GroupActions {
+  createGroup(input: ViewGroupInput): Promise<ViewGroup>;
+  renameGroup(id: string, newName: string): Promise<void>;
+  updateGroupIcon(id: string, icon: string | null): Promise<void>;
+  deleteGroup(id: string): Promise<void>;
+  reorderGroups(orderedIds: string[]): Promise<void>;
+  moveViewToGroup(viewId: string, groupId: string | null): Promise<void>;
+  groupNameExists(name: string, excludeId?: string): Promise<boolean>;
 }
 
 // ─── View Store Bundle ────────────────────────────────────────────
@@ -128,10 +156,12 @@ export interface ViewActions {
 export interface ViewStoreBundle {
   savedViews: Readable<SavedView[]>;
   recentViews: Readable<SavedView[]>;
+  savedGroups: Readable<ViewGroup[]>;
   activeViewId: Writable<string | null>;
   activeViewModified: Writable<boolean>;
   activeView: Readable<SavedView | null>;
   ready: Readable<boolean>;
   actions: ViewActions;
+  groupActions: GroupActions;
   destroy: () => Promise<void>;
 }

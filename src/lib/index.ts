@@ -23,6 +23,13 @@ export {
   loadDefaultView,
   setDefaultView,
 } from "./db/views.js";
+export {
+  createGroup,
+  renameGroup,
+  deleteGroup,
+  reorderGroups,
+  moveViewToGroup,
+} from "./db/groups.js";
 
 // Types
 export type {
@@ -38,4 +45,7 @@ export type {
   AggregationConfig,
   ViewRow,
   ViewGroup,
+  ViewGroupRow,
+  ViewGroupInput,
+  GroupActions,
 } from "./types.js";
