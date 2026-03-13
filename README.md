@@ -4,7 +4,7 @@ Save and restore table view configurations (filters, sorting, columns) with PGLi
 
 ## Status
 
-**Beta.** Published to npm as `@shotleybuilder/svelte-gridlite-views`.
+**v0.1.0 — Beta.** Published to npm as `@shotleybuilder/svelte-gridlite-views`.
 
 ## Installation
 
