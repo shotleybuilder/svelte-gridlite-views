@@ -42,15 +42,16 @@ Svelte Stores (reactive layer)
     ↕ (live query callbacks)
 PGLite Live Queries
     ↕ (SQL)
-PGLite Tables (_gridlite_views, _gridlite_column_state)
+PGLite Tables (_gridlite_views, _gridlite_view_groups, _gridlite_column_state)
     ↕ (persistence)
 IndexedDB (idb://)
 ```
 
 ### Key Files
 
-- **`src/lib/stores/view-store.ts`** - Core: `initViewStore()` factory returning grid-scoped store bundle with reactive stores + CRUD actions
+- **`src/lib/stores/view-store.ts`** - Core: `initViewStore()` factory returning grid-scoped store bundle with reactive stores + CRUD actions + group actions
 - **`src/lib/db/views.ts`** - Raw SQL CRUD functions for _gridlite_views table
+- **`src/lib/db/groups.ts`** - Raw SQL CRUD functions for _gridlite_view_groups table
 - **`src/lib/db/migrations.ts`** - Schema DDL + idempotent migration runner
 - **`src/lib/components/ViewSelector.svelte`** - Dropdown for selecting/renaming/deleting views
 - **`src/lib/components/ViewSidebar.svelte`** - Persistent sidebar panel for browsing/managing views (alternative to ViewSelector)
@@ -70,11 +71,13 @@ IndexedDB (idb://)
 `initViewStore(db, gridId)` returns a `ViewStoreBundle`:
 - **`savedViews`** - Readable store of all views for this grid (live query backed)
 - **`recentViews`** - Readable store of recent views (last 7 days, top 5)
+- **`savedGroups`** - Readable store of all groups for this grid (live query backed, sorted by sort_order)
 - **`activeViewId`** - Writable store tracking selected view
 - **`activeViewModified`** - Writable store tracking unsaved changes
 - **`activeView`** - Derived store (activeViewId + savedViews)
 - **`ready`** - Readable boolean, true after migrations complete
-- **`actions`** - CRUD methods: save, load, update, delete, rename, markModified, clearActive, nameExists, getStorageStats, setDefaultView, loadDefaultView, waitForReady
+- **`actions`** - View CRUD methods: save, load, update, delete, rename, markModified, clearActive, nameExists, getStorageStats, setDefaultView, loadDefaultView, waitForReady
+- **`groupActions`** - Group CRUD methods: createGroup, renameGroup, updateGroupIcon, deleteGroup, reorderGroups, moveViewToGroup, groupNameExists
 - **`destroy()`** - Cleanup live query subscriptions
 
 ### Component Pattern
@@ -82,22 +85,25 @@ IndexedDB (idb://)
 Components accept `viewStore: ViewStoreBundle` as a prop:
 ```svelte
 <ViewSelector {viewStore} on:viewSelected={handler} />
-<ViewSidebar {viewStore} groups={[]} on:viewSelected={handler} />
+<ViewSidebar {viewStore} on:viewSelected={handler} />
 <SaveViewModal {viewStore} bind:open={showModal} config={currentConfig} on:save={handler} />
 ```
 
-ViewSelector (dropdown) and ViewSidebar (persistent panel) are interchangeable — same `viewStore` prop, same `viewSelected` event. Use one or both.
+ViewSelector (dropdown) and ViewSidebar (persistent panel) are interchangeable — same `viewStore` prop, same `viewSelected` event. The sidebar also supports persisted group management (create/rename/delete groups, drag-and-drop views between groups).
 
 ### SQL Tables
 
-- **`_gridlite_views`** - View definitions with JSONB config columns
+- **`_gridlite_views`** - View definitions with JSONB config columns, optional `group_id` FK
+- **`_gridlite_view_groups`** - Group definitions (name, icon, sort_order) scoped by grid_id
 - **`_gridlite_column_state`** - Per-view column state (cascading delete)
 
 ### Validation Rules
 
 - 50 view limit per grid
-- 100 char max for view names
+- 20 group limit per grid
+- 100 char max for view and group names
 - 500 char max for descriptions
+- Unique group names per grid (DB constraint + app-level check)
 
 ## Peer Dependencies
 
@@ -113,8 +119,8 @@ PGLite is browser-only (WASM). `initViewStore()` throws if called on the server.
 | Skill | Path | What it covers |
 |-------|------|----------------|
 | Quick Start | `.claude/skills/quick-start/SKILL.md` | Install, SvelteKit config, PGLite init, minimal integration, common mistakes |
-| Store API | `.claude/skills/store-api/SKILL.md` | `initViewStore()` signature, all 6 stores with types, all 11 actions with signatures |
-| Components | `.claude/skills/components/SKILL.md` | ViewSelector, ViewSidebar & SaveViewModal props/events, Update vs Save New pattern, ViewConfig type |
+| Store API | `.claude/skills/store-api/SKILL.md` | `initViewStore()` signature, all 7 stores with types, all 11 view actions + 7 group actions with signatures |
+| Components | `.claude/skills/components/SKILL.md` | ViewSelector, ViewSidebar (groups, drag-and-drop) & SaveViewModal props/events, Update vs Save New pattern, ViewConfig type |
 | View CRUD | `.claude/skills/view-crud/SKILL.md` | Full lifecycle (save → load → modify → update → delete), default views, storage stats |
 | Recipes | `.claude/skills/recipes/SKILL.md` | sgk integration, multiple grids, default view auto-load, migration from svelte-table-views-tanstack |
 
@@ -122,7 +128,7 @@ PGLite is browser-only (WASM). `initViewStore()` throws if called on the server.
 
 | Route | What it demonstrates |
 |-------|---------------------|
-| `src/routes/demo/+page.svelte` | Full integration: PGLite init, view store, ViewSelector, ViewSidebar, SaveViewModal, filter presets, column visibility, storage stats, default views, cleanup |
+| `src/routes/demo/+page.svelte` | Full integration: PGLite init, view store, ViewSelector, ViewSidebar with persisted groups, SaveViewModal, filter presets, column visibility, storage stats, default views, drag-and-drop, cleanup |
 
 ## Common Integration Patterns
 

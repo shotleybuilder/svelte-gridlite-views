@@ -33,6 +33,7 @@ Runs migrations automatically on first call. Multiple grids get independent stor
 | `activeViewModified` | `Writable<boolean>` | Whether active view has unsaved changes |
 | `activeView` | `Readable<SavedView \| null>` | Derived: full view object for activeViewId |
 | `ready` | `Readable<boolean>` | True after migrations + live queries are set up |
+| `savedGroups` | `Readable<ViewGroup[]>` | All groups for this grid, live query backed, sorted by sortOrder |
 
 ```svelte
 <script>
@@ -159,6 +160,75 @@ Wait for migrations and live queries to complete. Resolves immediately if alread
 ```typescript
 await viewStore.actions.waitForReady();
 ```
+
+## Group Actions
+
+The `groupActions` object on the store bundle provides CRUD for view groups.
+
+### createGroup(input: ViewGroupInput): Promise\<ViewGroup>
+
+Create a new group. Max 20 groups per grid.
+
+```typescript
+const group = await viewStore.groupActions.createGroup({ name: 'Safety Cases', icon: '🛡️' });
+```
+
+### renameGroup(id: string, newName: string): Promise\<void>
+
+Rename an existing group. Name must be unique per grid.
+
+```typescript
+await viewStore.groupActions.renameGroup(groupId, 'Archived Views');
+```
+
+### updateGroupIcon(id: string, icon: string | null): Promise\<void>
+
+Change or remove a group's icon.
+
+```typescript
+await viewStore.groupActions.updateGroupIcon(groupId, '📁');
+```
+
+### deleteGroup(id: string): Promise\<void>
+
+Delete a group. Views in the group are moved to ungrouped (not deleted).
+
+```typescript
+await viewStore.groupActions.deleteGroup(groupId);
+// Views that were in this group now have groupId = undefined
+```
+
+### reorderGroups(orderedIds: string[]): Promise\<void>
+
+Reorder groups by passing an array of group IDs in the desired order.
+
+```typescript
+await viewStore.groupActions.reorderGroups([groupId3, groupId1, groupId2]);
+```
+
+### moveViewToGroup(viewId: string, groupId: string | null): Promise\<void>
+
+Move a view into a group, or pass `null` to ungroup it.
+
+```typescript
+await viewStore.groupActions.moveViewToGroup(viewId, groupId);
+await viewStore.groupActions.moveViewToGroup(viewId, null); // ungroup
+```
+
+### groupNameExists(name: string, excludeId?: string): Promise\<boolean>
+
+Check if a group name already exists for this grid.
+
+```typescript
+const exists = await viewStore.groupActions.groupNameExists('Safety Cases');
+```
+
+## Group Validation Rules
+
+- **Group limit**: 20 per grid
+- **Name max**: 100 characters
+- **Name uniqueness**: Enforced per grid_id (DB UNIQUE constraint)
+- **Delete behavior**: Views moved to ungrouped (FK ON DELETE SET NULL)
 
 ## Cleanup
 

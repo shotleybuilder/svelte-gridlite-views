@@ -4,7 +4,7 @@ Save and restore table view configurations (filters, sorting, columns) with PGLi
 
 ## Status
 
-**v0.1.0 — Beta.** Published to npm as `@shotleybuilder/svelte-gridlite-views`.
+**v0.2.0 — Beta.** Published to npm as `@shotleybuilder/svelte-gridlite-views`.
 
 ## Installation
 
@@ -89,10 +89,10 @@ This library includes structured skill files in `.claude/skills/` optimised for 
 | Component | Props | Events |
 |---|---|---|
 | `ViewSelector` | `viewStore: ViewStoreBundle` | `viewSelected`, `deleteView` |
-| `ViewSidebar` | `viewStore`, `groups`, `isDocked`, `width`, `showSearch`, `showPinned` | `viewSelected`, `deleteView`, `pin`, `groupToggle` |
+| `ViewSidebar` | `viewStore`, `groups` (fallback), `isDocked`, `width`, `showSearch`, `showPinned` | `viewSelected`, `deleteView`, `pin`, `groupToggle`, `groupCreated`, `groupDeleted`, `groupRenamed`, `viewMoved` |
 | `SaveViewModal` | `viewStore`, `open`, `config`, `originalQuery?` | `save` |
 
-`ViewSelector` (dropdown) and `ViewSidebar` (persistent panel) are interchangeable — same `viewStore` prop, same `viewSelected` event.
+`ViewSelector` (dropdown) and `ViewSidebar` (persistent panel) are interchangeable — same `viewStore` prop, same `viewSelected` event. The sidebar also supports persisted group management with drag-and-drop.
 
 ### Store Factory
 
@@ -107,6 +107,7 @@ Returns grid-scoped reactive stores + CRUD actions. See [Store API guide](.claud
 Low-level SQL functions for advanced use cases:
 
 ```typescript
+// Views
 runViewMigrations(db)          // Idempotent schema setup
 saveView(db, gridId, input)    // INSERT
 loadView(db, id)               // SELECT by ID
@@ -114,13 +115,21 @@ loadViews(db, gridId)          // SELECT all for grid
 deleteView(db, id)             // DELETE with cascade
 setDefaultView(db, gridId, id) // Set is_default flag
 loadDefaultView(db, gridId)    // Load default view
+
+// Groups
+createGroup(db, gridId, input) // Create a group
+renameGroup(db, id, name)      // Rename a group
+deleteGroup(db, id)            // Delete (ungroups views via ON DELETE SET NULL)
+reorderGroups(db, orderedIds)  // Set sort_order by array position
+moveViewToGroup(db, viewId, groupId) // Assign view to group (or null for ungrouped)
 ```
 
 ### Types
 
 ```typescript
 SavedView, SavedViewInput, ViewConfig, ViewStoreBundle, ViewActions,
-FilterCondition, FilterLogic, SortConfig, GroupConfig, AggregationConfig, ViewRow, ViewGroup
+FilterCondition, FilterLogic, SortConfig, GroupConfig, AggregationConfig,
+ViewRow, ViewGroup, ViewGroupRow, ViewGroupInput, GroupActions
 ```
 
 ## Architecture
@@ -132,7 +141,7 @@ Svelte Stores (reactive layer)
     ↕ (live query callbacks)
 PGLite Live Queries
     ↕ (SQL)
-PGLite Tables (_gridlite_views, _gridlite_column_state)
+PGLite Tables (_gridlite_views, _gridlite_view_groups, _gridlite_column_state)
     ↕ (persistence)
 IndexedDB (idb://)
 ```

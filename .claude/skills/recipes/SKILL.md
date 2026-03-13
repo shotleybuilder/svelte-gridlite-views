@@ -1,6 +1,6 @@
 ---
 name: gridlite-views-recipes
-description: "Common integration patterns: svelte-gridlite-kit integration, multiple grids, default view auto-load, migration from svelte-table-views-tanstack, low-level SQL access."
+description: "Common integration patterns: svelte-gridlite-kit integration, multiple grids, default view auto-load, group management, migration from svelte-table-views-tanstack, low-level SQL access."
 user-invocable: true
 ---
 
@@ -155,6 +155,61 @@ async function migrateViews(db: PGliteWithLive, gridId: string) {
 | `config.sort: SortConfig \| null` | `config.sorting: SortConfig[]` |
 | `config.columns: string[]` | `config.columnVisibility: Record<string, boolean>` |
 | `savedViewsReady` store | `viewStore.ready` store |
+
+## Group Management
+
+Create and manage view groups programmatically:
+
+```typescript
+const viewStore = initViewStore(db, 'my-grid');
+await viewStore.actions.waitForReady();
+
+// Create groups
+const safety = await viewStore.groupActions.createGroup({ name: 'Safety Cases', icon: '🛡️' });
+const notices = await viewStore.groupActions.createGroup({ name: 'Notices', icon: '📋' });
+const archived = await viewStore.groupActions.createGroup({ name: 'Archived', icon: '📦' });
+
+// Move views into groups
+await viewStore.groupActions.moveViewToGroup(viewId, safety.id);
+
+// Ungroup a view
+await viewStore.groupActions.moveViewToGroup(viewId, null);
+
+// Rename and delete
+await viewStore.groupActions.renameGroup(archived.id, 'Old Views');
+await viewStore.groupActions.deleteGroup(archived.id); // views moved to ungrouped
+
+// Reorder groups
+await viewStore.groupActions.reorderGroups([notices.id, safety.id]);
+```
+
+### Seed Groups on First Load
+
+```typescript
+onMount(async () => {
+  viewStore = initViewStore(db, 'my-grid');
+  await viewStore.actions.waitForReady();
+
+  // Seed groups if none exist
+  const groups = get(viewStore.savedGroups);
+  if (groups.length === 0) {
+    await viewStore.groupActions.createGroup({ name: 'Active', icon: '🟢' });
+    await viewStore.groupActions.createGroup({ name: 'Archived', icon: '📦' });
+  }
+});
+```
+
+### Listen for Group Events on Sidebar
+
+```svelte
+<ViewSidebar
+  {viewStore}
+  on:viewSelected={(e) => applyConfig(e.detail.view.config)}
+  on:groupCreated={(e) => console.log('Created group:', e.detail.group.name)}
+  on:groupDeleted={(e) => console.log('Deleted group:', e.detail.id)}
+  on:viewMoved={(e) => console.log('Moved view', e.detail.viewId, 'to group', e.detail.groupId)}
+/>
+```
 
 ## Low-Level SQL Access
 

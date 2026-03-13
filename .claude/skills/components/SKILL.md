@@ -1,6 +1,6 @@
 ---
 name: gridlite-views-components
-description: "ViewSelector and SaveViewModal component reference: props, events, keyboard shortcuts, Update vs Save New pattern. Use when integrating view UI components."
+description: "ViewSelector, ViewSidebar & SaveViewModal component reference: props, events, keyboard shortcuts, Update vs Save New pattern, group management, drag-and-drop. Use when integrating view UI components."
 user-invocable: true
 ---
 
@@ -174,6 +174,10 @@ Persistent always-visible panel for browsing and managing saved views. Alternati
 | `deleteView` | `{ id: string }` | Fired after a view is deleted (matches ViewSelector) |
 | `pin` | `{ view: SavedView, isPinned: boolean }` | Fired when view is pinned/unpinned |
 | `groupToggle` | `{ group: ViewGroup, isCollapsed: boolean }` | Fired when group is collapsed/expanded |
+| `groupCreated` | `{ group: ViewGroup }` | Fired after a new group is created |
+| `groupDeleted` | `{ id: string }` | Fired after a group is deleted |
+| `groupRenamed` | `{ id: string, name: string }` | Fired after a group is renamed |
+| `viewMoved` | `{ viewId: string, groupId: string \| null }` | Fired after a view is moved to a group (or ungrouped) |
 
 ### Usage
 
@@ -204,10 +208,13 @@ Persistent always-visible panel for browsing and managing saved views. Alternati
 ```typescript
 interface ViewGroup {
   id: string;
+  gridId: string;
   name: string;
   icon?: string;
   isCollapsed?: boolean;
-  order?: number;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -216,6 +223,9 @@ interface ViewGroup {
 - **Search**: Filter views by name and description
 - **Pinned views**: Pin frequently used views to the top (persisted to localStorage)
 - **Collapsible groups**: Organize views into named groups with counts
+- **Persisted groups**: Groups stored in PGLite, auto-synced via live queries
+- **Group CRUD**: Create, rename, and delete groups inline in the sidebar
+- **Drag-and-drop**: Drag views between groups (native HTML5 API, no deps)
 - **Inline rename**: Click pencil icon, Enter to confirm, Escape to cancel
 - **Set default**: Star icon to mark a view as default
 - **Delete**: Trash icon with confirmation dialog
@@ -223,6 +233,25 @@ interface ViewGroup {
 - **Modified indicator**: Asterisk (*) when active view has unsaved changes
 - **Storage stats**: Shows X/50 views in header
 - **CSS custom properties**: Full theming support (--sidebar-bg, --sidebar-border, etc.)
+
+### Group Management
+
+Groups are persisted in PGLite via `savedGroups` store and `groupActions` on the ViewStoreBundle. The sidebar provides inline UI for all group operations:
+
+- **Create group**: "+" button in sidebar header opens an inline input row
+- **Rename group**: Pencil icon on group header hover, inline editing
+- **Delete group**: Trash icon on group header hover, confirm dialog (views moved to ungrouped)
+- **Backward compatibility**: Static `groups` prop still accepted as fallback when `savedGroups` is empty
+
+### Drag-and-Drop
+
+Views can be dragged between groups using native HTML5 drag-and-drop:
+
+- **Drag views**: Each view item is draggable — grab and drop onto a group
+- **Drop targets**: Group containers and the "Ungrouped" section accept drops
+- **Visual feedback**: Drop targets highlight with dashed border during drag
+- **Ungroup**: Drop a view onto the "Ungrouped" section to remove from group
+- **Events**: `viewMoved` event fires after each drag-and-drop operation
 
 ### CSS Custom Properties
 

@@ -170,6 +170,7 @@ interface SavedView {
   description?: string;
   config: ViewConfig;      // Filters, sorting, columns, etc.
   originalQuery?: string;  // Optional NL query reference
+  groupId?: string;        // Group this view belongs to (undefined = ungrouped)
   isDefault: boolean;
   usageCount: number;
   lastUsed: string;        // ISO timestamp
@@ -177,3 +178,17 @@ interface SavedView {
   updatedAt: string;       // ISO timestamp
 }
 ```
+
+## Move a View to a Group
+
+Views can be assigned to groups via the store's `groupActions`:
+
+```typescript
+// Move a view into a group
+await viewStore.groupActions.moveViewToGroup(viewId, groupId);
+
+// Ungroup a view
+await viewStore.groupActions.moveViewToGroup(viewId, null);
+```
+
+The `groupId` field on `SavedView` updates automatically via live queries. See the **store-api** skill for full group CRUD documentation.

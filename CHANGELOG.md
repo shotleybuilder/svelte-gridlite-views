@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-03-13
+
+### Added
+
+- **Persisted group management** — groups are now first-class entities stored in PGLite (`_gridlite_view_groups` table)
+- `group_id` column on `_gridlite_views` with FK constraint (`ON DELETE SET NULL` — deleting a group ungroups views, never deletes them)
+- `savedGroups` reactive store on `ViewStoreBundle` (live query backed, ordered by `sort_order`)
+- `groupActions` on `ViewStoreBundle`: `createGroup`, `renameGroup`, `updateGroupIcon`, `deleteGroup`, `reorderGroups`, `moveViewToGroup`, `groupNameExists`
+- `groupId` field on `SavedView` (nullable — ungrouped is valid)
+- New types: `ViewGroupRow`, `ViewGroupInput`, `GroupActions`
+- New SQL CRUD module: `src/lib/db/groups.ts`
+- ViewSidebar: inline group creation (+ button in header), group rename/delete on hover, drag-and-drop views between groups, drag-and-drop group reordering
+- ViewSidebar: new events — `groupCreated`, `groupDeleted`, `groupRenamed`, `viewMoved`
+- ViewSidebar: drop target highlighting with CSS custom properties (`--drop-target-bg`, `--drop-target-border`)
+- Demo app seeds 3 sample groups on first load
+- Exported group DB functions: `createGroup`, `renameGroup`, `deleteGroup`, `reorderGroups`, `moveViewToGroup`
+
+### Changed
+
+- `ViewGroup` interface enriched with `gridId`, `sortOrder`, `createdAt`, `updatedAt` (was minimal `id`/`name`/`icon`/`order`)
+- ViewSidebar `groups` prop is now a fallback — store-driven groups (`savedGroups`) take precedence when present
+- ViewSidebar `viewsByGroup` now uses actual `view.groupId` (was a stub routing all views to ungrouped)
+- ViewSidebar group headers changed from `<button>` to `<div role="button">` to allow nested action buttons without a11y violations
+- `ViewRow` type now includes `group_id: string | null`
+
+### Fixed
+
+- Nested button a11y warnings in ViewSidebar group headers
+- Missing ARIA roles on drag-and-drop containers
+
 ## [0.1.0] - 2026-03-13
 
 ### Added
@@ -40,5 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stores are prop-based (not global) — each grid gets its own `ViewStoreBundle`
 - Consumer provides the PGLite instance; the library does not create its own database
 
+[0.2.0]: https://github.com/shotleybuilder/svelte-gridlite-views/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/shotleybuilder/svelte-gridlite-views/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/shotleybuilder/svelte-gridlite-views/releases/tag/v0.0.1
