@@ -251,7 +251,7 @@
 										Last used: {formatDate(view.lastUsed)}
 									</p>
 								</button>
-								<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+								<div class="hidden items-center gap-1 group-hover:flex">
 									<button
 										type="button"
 										on:click={(e) => duplicateView(view, e)}
@@ -375,7 +375,7 @@
 											{/if}
 										</div>
 									</button>
-									<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+									<div class="hidden items-center gap-1 group-hover:flex">
 										<button
 											type="button"
 											on:click={(e) => duplicateView(view, e)}

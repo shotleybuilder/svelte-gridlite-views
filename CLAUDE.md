@@ -104,6 +104,61 @@ Components accept `viewStore: ViewStoreBundle` as a prop:
 
 PGLite is browser-only (WASM). `initViewStore()` throws if called on the server. Consuming pages should use `export const ssr = false` or `{#if browser}` guards.
 
+## Claude Code Skills
+
+| Skill | Path | What it covers |
+|-------|------|----------------|
+| Quick Start | `.claude/skills/quick-start/SKILL.md` | Install, SvelteKit config, PGLite init, minimal integration, common mistakes |
+| Store API | `.claude/skills/store-api/SKILL.md` | `initViewStore()` signature, all 6 stores with types, all 11 actions with signatures |
+| Components | `.claude/skills/components/SKILL.md` | ViewSelector & SaveViewModal props/events, Update vs Save New pattern, ViewConfig type |
+| View CRUD | `.claude/skills/view-crud/SKILL.md` | Full lifecycle (save → load → modify → update → delete), default views, storage stats |
+| Recipes | `.claude/skills/recipes/SKILL.md` | sgk integration, multiple grids, default view auto-load, migration from svelte-table-views-tanstack |
+
+## Reference Demos
+
+| Route | What it demonstrates |
+|-------|---------------------|
+| `src/routes/demo/+page.svelte` | Full integration: PGLite init, view store, ViewSelector, SaveViewModal, filter presets, column visibility, storage stats, default views, cleanup |
+
+## Common Integration Patterns
+
+### 1. Initialize PGLite + View Store
+```ts
+import { PGlite } from '@electric-sql/pglite';
+import { live } from '@electric-sql/pglite/live';
+import { initViewStore } from '@shotleybuilder/svelte-gridlite-views';
+
+const db = await PGlite.create({ extensions: { live } });
+const viewStore = initViewStore(db, 'my-grid');
+await viewStore.actions.waitForReady();
+```
+
+### 2. Save Current Config as a View
+```ts
+const config = { filters: [...], sorting: [...], columnVisibility: {...} };
+await viewStore.actions.save('My View', config, 'Optional description');
+```
+
+### 3. Load a View and Apply Config
+```svelte
+<ViewSelector {viewStore} on:viewSelected={(e) => applyConfig(e.detail.config)} />
+```
+
+### 4. Update vs Save New (Split Button)
+```ts
+if ($activeViewId && $activeViewModified) {
+  await viewStore.actions.update($activeViewId, newConfig);
+} else {
+  showSaveModal = true;
+}
+```
+
+### 5. Cleanup on Destroy
+```ts
+import { onDestroy } from 'svelte';
+onDestroy(() => viewStore.destroy());
+```
+
 ## Demo Application
 
 `src/routes/` contains a demo SvelteKit app for testing during development. NOT part of the published package. The demo creates an in-memory PGLite instance and initializes the view store on mount.
