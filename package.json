@@ -1,6 +1,6 @@
 {
   "name": "@shotleybuilder/svelte-gridlite-views",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Save and restore table view configurations (filters, sorting, columns) with PGLite persistence. Built for Svelte 5 apps using svelte-gridlite-kit. Features ViewSelector dropdown, ViewSidebar panel, live queries, IndexedDB storage via PGLite, and grid-scoped view management.",
   "keywords": [
     "svelte",

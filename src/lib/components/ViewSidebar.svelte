@@ -934,6 +934,7 @@
 		align-items: center;
 		padding: 0 6px 0 14px;
 		position: relative;
+		border-left: 3px solid transparent;
 	}
 
 	.view-item:hover {
@@ -941,7 +942,8 @@
 	}
 
 	.view-item.selected {
-		background: var(--selected-bg, rgba(59, 130, 246, 0.1));
+		background: var(--selected-bg, rgba(59, 130, 246, 0.15));
+		border-left-color: var(--focus-color, #3b82f6);
 	}
 
 	.view-item[draggable="true"] {
